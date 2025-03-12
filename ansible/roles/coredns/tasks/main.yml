@@ -1,0 +1,30 @@
+---
+- name: Create CoreDNS configuration directory
+  file:
+    path: /opt/coredns
+    state: directory
+
+- name: Copy CoreDNS configuration
+  copy:
+    src: files/Corefile
+    dest: /opt/coredns/Corefile
+
+- name: Wait for Traefik to be running before starting CoreDNS
+  command: docker inspect -f '{{ "{{ .State.Running }}" }}' traefik
+  register: traefik_status
+  retries: 10
+  delay: 5
+  until: traefik_status.stdout.strip() == "true"
+
+- name: Deploy CoreDNS container
+  docker_container:
+    name: coredns
+    image: coredns/coredns:latest
+    volumes:
+      - /opt/coredns:/etc/coredns
+    ports:
+      - "127.0.0.1:6053:6053"
+      - "127.0.0.1:6054:6054"
+    networks:
+      - name: edge-network
+    restart_policy: unless-stopped

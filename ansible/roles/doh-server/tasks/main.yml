@@ -1,0 +1,32 @@
+---
+- name: Create DoH Server configuration directory
+  file:
+    path: /opt/doh-server
+    state: directory
+
+- name: Wait for CoreDNS to be running before starting DoH Server
+  command: docker inspect -f '{{ "{{ .State.Running }}" }}' coredns
+  register: coredns_status
+  retries: 10
+  delay: 5
+  until: coredns_status.stdout.strip() == "true"
+
+- name: Deploy DoH Server container
+  docker_container:
+    name: doh-server
+    image: mosquito/doh-server:latest
+    volumes:
+      - /opt/doh-server:/etc/doh-server
+    networks:
+      - name: edge-network
+    ports:
+      - "127.0.0.1:6654:6654"
+    env:
+      DEBUG: "1"
+      UPSTREAM_DNS_SERVER: "udp:10.0.0.31:6053"
+      DOH_HTTP_PREFIX: "/doh"   
+      DOH_SERVER_LISTEN: ":6654"
+      DOH_SERVER_TIMEOUT: "10"
+      DOH_SERVER_TRIES: "3"
+      DOH_SERVER_VERBOSE: "true"
+    restart_policy: unless-stopped

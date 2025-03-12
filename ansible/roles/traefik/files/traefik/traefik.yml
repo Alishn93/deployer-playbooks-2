@@ -1,0 +1,25 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+log:
+  level: DEBUG
+
+api:
+  dashboard: false
+
+providers:
+  docker:
+    exposedByDefault: false
+    watch: true
+    network: edge-network
+  file:
+    filename: /etc/traefik/config.yml
+    watch: true
+
+entryPoints:
+  web:
+    address: :80
+  websecure:
+    address: :443
+

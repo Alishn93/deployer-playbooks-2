@@ -1,0 +1,37 @@
+---
+- name: Create Docker network for Traefik
+  docker_network:
+    name: edge-network
+    driver: bridge
+    ipam_config:
+      - subnet: 10.0.0.0/24
+    state: present
+
+- name: Create Traefik configuration directory
+  file:
+    path: /opt/traefik
+    state: directory
+
+- name: Copy Traefik configuration files
+  copy:
+    src: files/traefik/{{ item }}
+    dest: /opt/traefik/{{ item }}
+  loop:
+    - traefik.yml
+    - config.yml
+  notify: Restart Traefik
+
+- name: Deploy Traefik container
+  docker_container:
+    name: traefik
+    image: traefik:v3.3
+    restart_policy: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /opt/traefik/config.yml:/etc/traefik/config.yml
+    networks:
+      - name: edge-network
+    ports:
+      - "443:443"
+      - "80:80"

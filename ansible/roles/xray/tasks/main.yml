@@ -1,0 +1,31 @@
+---
+- name: Create Xray configuration directory
+  file:
+    path: /opt/xray
+    state: directory
+
+- name: Copy Xray configuration
+  copy:
+    src: files/config.json
+    dest: /opt/xray/config.json
+
+- name: Wait for Traefik to be running
+  command: docker inspect -f '{{ "{{ .State.Running }}" }}' traefik
+  register: traefik_status
+  retries: 10
+  delay: 5
+  until: traefik_status.stdout.strip() == "true"
+
+- name: Deploy Xray container
+  docker_container:
+    name: xray
+    image: teddysun/xray
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/xray/config.json:/etc/xray/config.json
+    ports:
+      - "127.0.0.1:8011:8011"
+      - "127.0.0.1:8080:8080"
+    networks:
+      - name: edge-network
+  when: traefik_status.stdout == "true"
